@@ -1,0 +1,8 @@
+.DS_Store
+
+# Raw downloaded legislation XML -- large, and always re-fetchable from
+# legislation.gov.uk's official XML endpoint via xml_parser.py, so no need to
+# version-control it. (These also trip GitHub secret scanning as false
+# positives: legislation.gov.uk's own "key-<32 hex>" amendment IDs happen to
+# match the Mailgun API key pattern.)
+data/raw/*.xml
