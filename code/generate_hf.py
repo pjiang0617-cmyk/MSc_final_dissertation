@@ -1,25 +1,31 @@
 """
-GPU/CUDA variant of asa_legal_pipeline/code/generate.py -- same retrieve-then-generate
-logic, but the generation half uses transformers+peft instead of mlx_lm (which only
-runs on Apple Silicon). retrieve.py itself is shared unchanged (sentence-transformers
-runs fine on either CPU or CUDA).
+Retrieve-then-generate for a single query.
 
-Usage:
-    python generate_hf.py "does this ad breach the CAP Code if it claims a specific weight loss in a week?"
-    python generate_hf.py "..." --adapter-path ../adapters/legal_lora_v1_gpu   # fine-tuned model
+python generate_hf.py "A weight-loss supplement ad claims users will lose 10lbs in one week." --adapter-path ../adapters/legal_lora_v1_gpu
+
+Pass a plain description, not a full question -- see build_messages() for why.
 """
 
 import argparse
+import re
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
 
-from retrieve import load_index, retrieve, MODEL_NAME as EMBED_MODEL_NAME
+from retrieve import load_index, retrieve_stratified, MODEL_NAME as EMBED_MODEL_NAME
 from build_finetune_dataset import SYSTEM_PROMPT
 from sentence_transformers import SentenceTransformer
 
 LLM_MODEL_ID = "google/gemma-4-E4B-it"
+
+# Strips a leading "Advertisement:" prefix if the caller included one, so it can't
+# end up duplicated by build_messages() below.
+LEADING_WRAPPER_RE = re.compile(r"^\s*advertisement\s*:\s*", re.IGNORECASE)
+
+
+def clean_query(query):
+    return LEADING_WRAPPER_RE.sub("", query).strip()
 
 
 def format_context(results):
@@ -27,14 +33,16 @@ def format_context(results):
 
 
 def build_messages(query, results):
-    # Reuses the exact system prompt and user-message shape build_finetune_dataset.py
-    # trains on (an "Advertisement: ... Does this breach ...?" block) -- only the
-    # retrieved context is new. A fine-tuned adapter learned its "Decision: ...
-    # Rules cited: ..." habit against that shape; feeding it an unrelated QA-style
-    # prompt (the earlier version of this script) would give it an input format it
-    # never saw during training, making any RAG-vs-no-RAG comparison meaningless.
+    # `query` is a plain, undecorated description of the ad/behaviour -- the same
+    # text used for retrieval in main() below. The full "Advertisement: ... Does
+    # this breach ...?" wrapper that build_finetune_dataset.py trains on is added
+    # only here, for the LLM-facing prompt, not for the retrieval query.
     context = format_context(results)
-    user_content = f"Relevant rules and legislation:\n{context}\n\n{query}"
+    user_content = (
+        f"Relevant rules and legislation:\n{context}\n\n"
+        f"Advertisement:\n{query}\n\n"
+        "Does this advertisement breach the CAP Code or BCAP Code? If so, which rule(s) and why?"
+    )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_content},
@@ -44,8 +52,8 @@ def build_messages(query, results):
 def load_model(adapter_path=None):
     tokenizer = AutoTokenizer.from_pretrained(LLM_MODEL_ID)
     quant_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16)
-    # device_map={"": 0} not "auto" -- see train_hf.py's comment: "auto" was offloading
-    # layers to CPU on this cluster, which 4-bit bitsandbytes models reject outright.
+    # device_map={"": 0}, not "auto": avoids accelerate's automatic CPU/disk offload,
+    # which 4-bit bitsandbytes models reject.
     model = AutoModelForCausalLM.from_pretrained(LLM_MODEL_ID, quantization_config=quant_config, device_map={"": 0}, torch_dtype=torch.bfloat16)
     if adapter_path:
         model = PeftModel.from_pretrained(model, adapter_path)
@@ -56,17 +64,18 @@ def load_model(adapter_path=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("query")
-    ap.add_argument("--k", type=int, default=5)
+    ap.add_argument("--k-rules", type=int, default=3, help="how many cap_rule/bcap_rule/legislation_section chunks to retrieve")
+    ap.add_argument("--k-cases", type=int, default=2, help="how many asa_case_summary/asa_case_assessment chunks to retrieve")
     ap.add_argument("--group", default=None)
-    ap.add_argument("--source-type", default=None)
     ap.add_argument("--adapter-path", default=None, help="path to a trained LoRA adapter (fine-tuned model)")
     ap.add_argument("--max-tokens", type=int, default=500)
     args = ap.parse_args()
+    query = clean_query(args.query)
 
     print("Loading retrieval index...")
     chunks, embeddings = load_index()
     embed_model = SentenceTransformer(EMBED_MODEL_NAME)
-    results = retrieve(args.query, chunks, embeddings, embed_model, k=args.k, group=args.group, source_type=args.source_type)
+    results = retrieve_stratified(query, chunks, embeddings, embed_model, k_rules=args.k_rules, k_cases=args.k_cases, group=args.group)
 
     print(f"Retrieved {len(results)} chunks:")
     for score, chunk in results:
@@ -74,7 +83,7 @@ def main():
 
     print("\nLoading generation model...")
     model, tokenizer = load_model(args.adapter_path)
-    messages = build_messages(args.query, results)
+    messages = build_messages(query, results)
     prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
 

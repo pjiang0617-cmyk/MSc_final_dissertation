@@ -1,20 +1,7 @@
-"""
-RAG pipeline (Approach 2 -- hand-rolled, no framework): stage 1 of 3.
-
-Unifies every processed data source (CAP/BCAP Code rules, legislation sections,
-ASA rulings) into one flat list of retrieval chunks with consistent fields:
-  - chunk_id: stable unique id
-  - source_type: cap_rule | bcap_rule | legislation_section | asa_case_summary | asa_case_assessment
-  - text: the actual passage to embed and retrieve
-  - citation: human-readable citation string, safe to quote back to the user
-  - source_url: link back to the original page, for traceability
-  - metadata: dict of filterable fields (group, decision, in_force status notes, etc.)
-
-Usage:
-    python build_rag_chunks.py
-Writes:
-    ../data/rag/chunks.jsonl
-"""
+# Unifies CAP/BCAP rules, legislation sections, and ASA rulings into one flat
+# chunks.jsonl for retrieval. Common fields: chunk_id, source_type, text,
+# citation, source_url, metadata (group/decision/code/rule_number/etc, varies
+# by source_type). Run with no args -> writes ../data/rag/chunks.jsonl.
 
 import json
 from pathlib import Path
@@ -54,8 +41,7 @@ def chunks_from_legislation(path):
             rec = json.loads(line)
             if not rec["text"]:
                 continue
-            # Acts (primary) are cited "20XX c.N"; Regulations/SIs (secondary) are cited "SI 20XX/N" --
-            # using "c." for an SI is factually wrong (that notation is Act-chapter-number only).
+            # Acts (primary) are cited "20XX c.N"; Regulations/SIs (secondary) are cited "SI 20XX/N".
             is_secondary = rec.get("document_category") == "secondary"
             number_part = f"SI {rec['year']}/{rec['chapter']}" if is_secondary else f"{rec['year']} c.{rec['chapter']}"
             section_label = "reg." if is_secondary else "s."

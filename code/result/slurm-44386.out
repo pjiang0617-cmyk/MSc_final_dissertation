@@ -1,0 +1,66 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loaded 980 real CAP/BCAP rule numbers, 531 ground-truth rulings
+Evaluating on 49 held-out test examples
+
+Loading retrieval index...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3798.29it/s]
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading fine-tuned model (adapter applied)...
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:   2%|▏         | 49/2076 [00:00<00:13, 150.28it/s]Loading weights:  12%|█▏        | 246/2076 [00:00<00:02, 702.71it/s]Loading weights:  21%|██▏       | 442/2076 [00:00<00:01, 1077.23it/s]Loading weights:  31%|███       | 635/2076 [00:00<00:01, 1331.72it/s]Loading weights:  39%|███▊      | 804/2076 [00:03<00:07, 176.80it/s] Loading weights:  44%|████▍     | 915/2076 [00:03<00:06, 188.05it/s]Loading weights:  48%|████▊     | 996/2076 [00:03<00:05, 199.58it/s]Loading weights:  51%|█████     | 1059/2076 [00:04<00:04, 207.33it/s]Loading weights:  53%|█████▎    | 1110/2076 [00:04<00:04, 213.19it/s]Loading weights:  56%|█████▌    | 1153/2076 [00:04<00:04, 213.96it/s]Loading weights:  57%|█████▋    | 1190/2076 [00:04<00:04, 221.25it/s]Loading weights:  59%|█████▉    | 1224/2076 [00:04<00:03, 213.10it/s]Loading weights:  60%|██████    | 1253/2076 [00:05<00:03, 212.68it/s]Loading weights:  62%|██████▏   | 1280/2076 [00:05<00:03, 211.64it/s]Loading weights:  63%|██████▎   | 1307/2076 [00:05<00:03, 217.26it/s]Loading weights:  64%|██████▍   | 1334/2076 [00:05<00:03, 220.55it/s]Loading weights:  65%|██████▌   | 1359/2076 [00:05<00:04, 145.76it/s]Loading weights:  66%|██████▋   | 1378/2076 [00:05<00:04, 149.39it/s]Loading weights:  68%|██████▊   | 1405/2076 [00:05<00:03, 168.02it/s]Loading weights:  74%|███████▎  | 1528/2076 [00:06<00:01, 389.23it/s]Loading weights:  86%|████████▋ | 1791/2076 [00:06<00:00, 901.03it/s]Loading weights:  99%|█████████▊| 2047/2076 [00:06<00:00, 1305.89it/s]Loading weights: 100%|██████████| 2076/2076 [00:06<00:00, 330.61it/s] 
+  [1/49] https://www.asa.org.uk/rulings/person-s--unknown-g24-1248968-person-s--unknown.html  (resolved 1 citation(s) by index)
+  [2/49] https://www.asa.org.uk/rulings/norfolk-dinosaur-park-ltd-g21-1124972-norfolk-dinosaur-park-ltd.html  (resolved 1 citation(s) by index)
+  [3/49] https://www.asa.org.uk/rulings/lipstick-gangster-ltd-a22-1170565-lipstick-gangster-ltd.html  (resolved 0 citation(s) by index)
+  [4/49] https://www.asa.org.uk/rulings/health-bridge-ltd-a25-1309865-health-bridge-ltd.html  (resolved 0 citation(s) by index)
+  [5/49] https://www.asa.org.uk/rulings/supreme-cbd-ltd.html  (resolved 0 citation(s) by index)
+  [6/49] https://www.asa.org.uk/rulings/pharmarx-ltd-a24-1264777-pharmarx-ltd.html  (resolved 0 citation(s) by index)
+  [7/49] https://www.asa.org.uk/rulings/voopoo-international-inc-a23-1205198-voopoo-international-inc.html  (resolved 1 citation(s) by index)
+  [8/49] https://www.asa.org.uk/rulings/kamagames-ltd-a25-1285809-kamagames-ltd.html  (resolved 0 citation(s) by index)
+  [9/49] https://www.asa.org.uk/rulings/health-technologies-ltd-g21-1139812-health-technologies-ltd.html  (resolved 0 citation(s) by index)
+  [10/49] https://www.asa.org.uk/rulings/ppb-entertainment-ltd-a24-1258517-ppb-entertainment-ltd.html  (resolved 2 citation(s) by index)
+  [11/49] https://www.asa.org.uk/rulings/montpeliers--edinburgh--ltd-a22-1158777-montpeliers--edinburgh--ltd.html  (resolved 1 citation(s) by index)
+  [12/49] https://www.asa.org.uk/rulings/3d-lipo-ltd-a21-1111994-3d-lipo-ltd.html  (resolved 0 citation(s) by index)
+  [13/49] https://www.asa.org.uk/rulings/pure-wines-ltd-a22-1153535-pure-wines-ltd.html  (resolved 2 citation(s) by index)
+  [14/49] https://www.asa.org.uk/rulings/not-guilty-food-co-ltd-g23-1215538-not-guilty-food-co-ltd.html  (resolved 0 citation(s) by index)
+  [15/49] https://www.asa.org.uk/rulings/digital-vapers-a25-1317645-digital-vapers.html  (resolved 0 citation(s) by index)
+  [16/49] https://www.asa.org.uk/rulings/uk-meds-direct-ltd-a25-1279972-uk-meds-direct-ltd.html  (resolved 3 citation(s) by index)
+  [17/49] https://www.asa.org.uk/rulings/lucy-isabella-beauty---aesthetics-a22-1143088-lucy-isabella-beauty--aesthetics.html  (resolved 1 citation(s) by index)
+  [18/49] https://www.asa.org.uk/rulings/the-heal-air-A23-1199221.html  (resolved 0 citation(s) by index)
+  [19/49] https://www.asa.org.uk/rulings/whg--international--ltd-a23-1189952-whg--international--ltd.html  (resolved 2 citation(s) by index)
+  [20/49] https://www.asa.org.uk/rulings/kendal-nutricare-ltd-g21-1100684-kendal-nutricare-ltd.html  (resolved 3 citation(s) by index)
+  [21/49] https://www.asa.org.uk/rulings/hangcure-ltd-a24-1228813-hangcure-ltd.html  (resolved 1 citation(s) by index)
+  [22/49] https://www.asa.org.uk/rulings/lc-international-ltd-a23-1189959-lc-international-ltd.html  (resolved 0 citation(s) by index)
+  [23/49] https://www.asa.org.uk/rulings/juniper-technologies-uk-ltd-a25-1321384-juniper-technologies-uk-ltd.html  (resolved 2 citation(s) by index)
+  [24/49] https://www.asa.org.uk/rulings/cchg-ltd-a22-1168157-cchg-ltd.html  (resolved 1 citation(s) by index)
+  [25/49] https://www.asa.org.uk/rulings/aspro-atlantic-medikal-turizm-ticaret-limited-irketi.html  (resolved 2 citation(s) by index)
+  [26/49] https://www.asa.org.uk/rulings/drunkh-ltd-a22-1174357-drunkh-ltd.html  (resolved 2 citation(s) by index)
+  [27/49] https://www.asa.org.uk/rulings/apollo-future-technology-ltd-a24-1229800-apollo-future-technology-ltd.html  (resolved 1 citation(s) by index)
+  [28/49] https://www.asa.org.uk/rulings/may-health-tourism-services-a23-1211989-may-health-tourism-services.html  (resolved 1 citation(s) by index)
+  [29/49] https://www.asa.org.uk/rulings/liquid-lipo-ltd-a22-1143767-liquid-lipo-ltd.html  (resolved 1 citation(s) by index)
+  [30/49] https://www.asa.org.uk/rulings/essential-sounds-hearing-a23-1197770-esh-hearing.html  (resolved 0 citation(s) by index)
+  [31/49] https://www.asa.org.uk/rulings/bccr-ltd-a25-1297374-bccr-ltd.html  (resolved 0 citation(s) by index)
+  [32/49] https://www.asa.org.uk/rulings/beautyjenics-ltd-a25-1274802-beautyjenics-ltd.html  (resolved 1 citation(s) by index)
+  [33/49] https://www.asa.org.uk/rulings/the-skin-clinic-faversham-a22-1143074-the-skin-clinic-faversham.html  (resolved 2 citation(s) by index)
+  [34/49] https://www.asa.org.uk/rulings/direct-wines-ltd-a22-1149166-direct-wines-ltd.html  (resolved 0 citation(s) by index)
+  [35/49] https://www.asa.org.uk/rulings/eme-aesthetics---beauty-academy-ltd-a25-1274782-eme-aesthetics---beauty-academy-ltd.html  (resolved 1 citation(s) by index)
+  [36/49] https://www.asa.org.uk/rulings/brewdog-plc-g23-1210353-brewdog-plc.html  (resolved 0 citation(s) by index)
+  [37/49] https://www.asa.org.uk/rulings/videoslots-ltd-a26-1328653-videoslots-ltd.html  (resolved 2 citation(s) by index)
+  [38/49] https://www.asa.org.uk/rulings/xlmedia-plc-g23-1205202-xlmedia-plc.html  (resolved 1 citation(s) by index)
+  [39/49] https://www.asa.org.uk/rulings/ian-macleod-distillers-ltd-a22-1158770-ian-macleod-distillers-ltd.html  (resolved 3 citation(s) by index)
+  [40/49] https://www.asa.org.uk/rulings/express-healthcare-ltd-a26-1328700-express-healthcare-ltd.html  (resolved 1 citation(s) by index)
+  [41/49] https://www.asa.org.uk/rulings/locksley-distilling-co-ltd.html  (resolved 1 citation(s) by index)
+  [42/49] https://www.asa.org.uk/rulings/go-night-night--unconfirmed--a24-1249218-go-night-night--unconfirmed-.html  (resolved 1 citation(s) by index)
+  [43/49] https://www.asa.org.uk/rulings/lynne-mctaggart-a23-1193512-lynne-mctaggart.html  (resolved 3 citation(s) by index)
+  [44/49] https://www.asa.org.uk/rulings/medtech-global-llp-g24-1245772-medtech-global-llp.html  (resolved 0 citation(s) by index)
+  [45/49] https://www.asa.org.uk/rulings/nipper-co-ltd-a25-1284063-nipper-co-ltd.html  (resolved 3 citation(s) by index)
+  [46/49] https://www.asa.org.uk/rulings/marble-corporation-ltd-a23-1217662-marble-corporation-ltd.html  (resolved 0 citation(s) by index)
+  [47/49] https://www.asa.org.uk/rulings/asos-com-ltd-a25-1285452-asos-com-ltd.html  (resolved 0 citation(s) by index)
+  [48/49] https://www.asa.org.uk/rulings/flab-ltd-g22-1163089-flab-ltd.html  (resolved 2 citation(s) by index)
+  [49/49] https://www.asa.org.uk/rulings/global-records-srl-a22-1172595-global-records-srl.html  (resolved 2 citation(s) by index)
+
+=== Hybrid (RAG + fine-tuned) (n=49) ===
+  rule citation precision: 0.150
+  rule citation recall:    0.127
+  rule citation F1:        0.103
+  fabricated rule rate:    0.000
+  decision match rate:     0.918
+  format adherence rate:   1.000

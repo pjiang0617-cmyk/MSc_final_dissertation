@@ -1,19 +1,12 @@
 """
-GPU/CUDA variant -- otherwise identical to asa_legal_pipeline/code/build_finetune_dataset.py.
-Only change: MODEL_DIR points at the HF Hub id (google/gemma-4-E4B-it) instead of the
-local MLX-quantized checkpoint, since this folder has no models/ directory (that
-checkpoint is Mac/MLX-specific and isn't used for GPU training -- see train_hf.py).
+Turns the raw ASA ruling records (data/raw/asa_rulings_*.jsonl) into
+instruction-tuning pairs in the {"messages": [...]} chat format for LoRA
+fine-tuning.
 
-Phase 1 (part 2): turn the raw ASA ruling records (data/raw/asa_rulings_*.jsonl)
-into instruction-tuning pairs in the {"messages": [...]} chat format both mlx_lm.lora
-and HF trl's SFTTrainer expect for chat-style fine-tuning.
-
-Design choice: the fine-tuned adapter is meant to teach *behaviour* (how to
-reason from given ad copy to a rule-grounded verdict, and to always cite the
-exact rule numbers), not to memorise facts -- the facts (rule text, statute
-text) belong in the RAG index instead. That's why every assistant answer ends
-with an explicit "Rules cited:" line: we want the model to learn the *habit*
-of citing, which is what RQ2 (accuracy of citations) actually measures.
+Design: the fine-tuned adapter is meant to teach *behaviour* (how to reason
+from given ad copy to a rule-grounded verdict, and to always cite the exact
+rule numbers), not to memorise facts -- the facts (rule text, statute text)
+belong in the RAG index instead.
 
 Usage:
     python build_finetune_dataset.py
@@ -31,14 +24,16 @@ from transformers import AutoTokenizer
 
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "finetune"
-MODEL_DIR = "google/gemma-4-E4B-it"  # HF Hub id -- tokenizer/chat template only, same as the MLX checkpoint's
+MODEL_DIR = "google/gemma-4-E4B-it"  # HF Hub id -- tokenizer/chat template only
 
-# Empirically, only ~3% of examples exceed this many tokens (checked against the
-# real tokenizer), but those outliers are exactly what crashed mlx_lm.lora with
-# OOM on a 16GB machine even with batch-size=1 and gradient checkpointing --
-# mlx_lm truncates from the end at train time, which would cut off the "Rules
-# cited:" line we specifically engineered to be at the end. Dropping outliers
-# here (source) is safer than relying on runtime truncation (mlx_lm/tuner/trainer.py).
+# Examples longer than this (measured with the real tokenizer) are dropped from
+# the dataset entirely, rather than relying on truncation at training time.
+# Chosen to maximise training data: of the 534 examples with all required
+# fields, only 16 exceed this length. Training's actual --max-seq-length is
+# 1024 (see train_job.sbatch), well below this, so most examples between 1024
+# and 3072 tokens are still truncated during training -- the front-loaded
+# "Decision: ... Rules cited: ..." is designed to survive that; the detailed
+# reasoning after it may not.
 MAX_TOKENS = 3072
 
 SYSTEM_PROMPT = (
@@ -52,6 +47,12 @@ SYSTEM_PROMPT = (
 
 SPLIT_RATIOS = (0.8, 0.1, 0.1)  # train, valid, test
 SEED = 42
+
+# The raw rulings are ~90% "Upheld", so without correction the model can reach
+# a high decision-match score just by always predicting the majority class.
+# Minority-decision training rows are duplicated (train split only -- valid/test
+# stay at the natural distribution) until they reach roughly this share.
+MINORITY_TARGET_RATIO = 0.3
 
 
 def build_user_message(record):
@@ -77,13 +78,9 @@ def build_assistant_message(record):
     rules = record.get("cited_rules") or []
     edition = record.get("code_edition") or "CAP Code"
 
-    # Rules cited now comes right after Decision, BEFORE the detailed reasoning --
-    # not at the end. Tokenizer truncation (both train_hf.py's apply_chat_template
-    # and mlx_lm's runtime truncation) cuts from the end of the sequence, and on the
-    # GPU we're already forced down to max-seq-length=1024 (memory-limited, ~15.6GB
-    # cards), which truncates over half these examples. Front-loading the citation
-    # means it survives truncation even when the detailed reasoning gets cut off --
-    # exactly the information RQ2 (citation accuracy) actually measures.
+    # "Rules cited:" comes right after "Decision:", before the detailed reasoning,
+    # so it survives truncation at training/generation time even when the reasoning
+    # that follows gets cut off.
     answer = f"Decision: {decision}."
     if rules:
         rule_list = ", ".join(sorted(set(rules), key=rules.index))
@@ -103,9 +100,12 @@ def record_to_example(record):
             {"role": "user", "content": user_msg},
             {"role": "assistant", "content": assistant_msg},
         ],
-        # kept for traceability back to the source ruling; mlx_lm ignores extra keys
+        # kept for traceability back to the source ruling
         "source_url": record.get("source_url"),
         "group": record.get("group"),
+        # same fallback as build_assistant_message(), so this matches what the
+        # assistant message actually says
+        "decision": record.get("decision") or "Upheld",
     }
 
 
@@ -135,6 +135,27 @@ def load_examples():
     return kept
 
 
+def oversample_minority(rows, target_ratio=MINORITY_TARGET_RATIO, seed=SEED):
+    from collections import Counter
+
+    counts = Counter(r["decision"] for r in rows)
+    if len(counts) < 2:
+        return rows
+    majority_label, majority_count = counts.most_common(1)[0]
+
+    oversampled = list(rows)
+    for label, count in counts.items():
+        if label == majority_label:
+            continue
+        target_count = int(target_ratio * majority_count / (1 - target_ratio))
+        factor = max(1, round(target_count / count))
+        if factor > 1:
+            oversampled.extend([r for r in rows if r["decision"] == label] * (factor - 1))
+
+    random.Random(seed).shuffle(oversampled)
+    return oversampled
+
+
 def split_and_write(examples):
     random.Random(SEED).shuffle(examples)
     n = len(examples)
@@ -146,6 +167,11 @@ def split_and_write(examples):
         "valid": examples[n_train:n_train + n_valid],
         "test": examples[n_train + n_valid:],
     }
+
+    from collections import Counter
+    print(f"  train decision counts before oversampling: {dict(Counter(r['decision'] for r in splits['train']))}")
+    splits["train"] = oversample_minority(splits["train"])
+    print(f"  train decision counts after oversampling:  {dict(Counter(r['decision'] for r in splits['train']))}")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for name, rows in splits.items():

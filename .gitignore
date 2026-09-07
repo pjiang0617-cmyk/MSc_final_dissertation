@@ -6,3 +6,12 @@
 # positives: legislation.gov.uk's own "key-<32 hex>" amendment IDs happen to
 # match the Mailgun API key pattern.)
 data/raw/*.xml
+
+__pycache__/
+*.pyc
+
+# Trained LoRA adapters. The final adapter_model.safetensors for each run is
+# 133MB, over GitHub's 100MB per-file limit, and the per-checkpoint copies of
+# optimizer state come to about 8GB in total. Both adapters are archived
+# outside this repository -- see README.md for where to get them.
+adapters/

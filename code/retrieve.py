@@ -1,10 +1,7 @@
 """
-RAG pipeline (Approach 2 -- hand-rolled): stage 3 of 3.
-
-Brute-force cosine-similarity retrieval over the ~2.5k chunks embedded by
-build_embeddings.py. No vector database -- at this corpus size a plain numpy
-dot product (embeddings are pre-normalized, so dot product == cosine
-similarity) is fast enough and keeps every step visible/inspectable.
+Brute-force cosine-similarity retrieval over the chunks embedded by
+build_embeddings.py. Embeddings are pre-normalized, so a plain dot product
+gives cosine similarity directly.
 
 Usage:
     python retrieve.py "does a weight-loss ad breach the code if it claims a specific kg loss?"
@@ -51,6 +48,37 @@ def retrieve(query, chunks, embeddings, model, k=5, group=None, source_type=None
         if len(results) >= k:
             break
     return results
+
+
+# retrieve() ranks every source type on one combined similarity score, which lets
+# long ASA case narratives (closer in wording to a typical query) systematically
+# outscore short, abstractly worded rule/legislation chunks and crowd them out of
+# the top-k. retrieve_stratified() avoids this by retrieving rule/legislation
+# chunks and case chunks from two separate pools, so neither can crowd out the
+# other -- mirroring how an ASA ruling itself pairs a case discussion with an
+# explicit Code citation.
+RULE_LIKE_TYPES = {"cap_rule", "bcap_rule", "legislation_section"}
+CASE_LIKE_TYPES = {"asa_case_summary", "asa_case_assessment"}
+
+
+def retrieve_stratified(query, chunks, embeddings, model, k_rules=3, k_cases=2, group=None):
+    query_vec = model.encode([QUERY_PREFIX + query], normalize_embeddings=True)[0]
+    scores = embeddings @ query_vec
+
+    order = np.argsort(-scores)
+    rule_results, case_results = [], []
+    for idx in order:
+        if len(rule_results) >= k_rules and len(case_results) >= k_cases:
+            break
+        chunk = chunks[idx]
+        if group is not None and chunk["metadata"].get("group") != group:
+            continue
+        source_type = chunk["source_type"]
+        if source_type in RULE_LIKE_TYPES and len(rule_results) < k_rules:
+            rule_results.append((float(scores[idx]), chunk))
+        elif source_type in CASE_LIKE_TYPES and len(case_results) < k_cases:
+            case_results.append((float(scores[idx]), chunk))
+    return rule_results + case_results
 
 
 def main():

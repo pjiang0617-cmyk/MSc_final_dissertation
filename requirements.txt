@@ -1,14 +1,17 @@
-# GPU/CUDA environment -- separate from the Mac's MLX environment.
-# pip install -r requirements.txt  (inside a fresh conda/venv on the GPU machine)
+# pip install -r requirements.txt
+# (inside a conda env on the GPU machine -- see README.md's Setup section for
+# why conda rather than venv, and for the PIP_REQUIRE_VIRTUALENV workaround
+# this cluster's pip needs)
 
 torch
 transformers
 accelerate
 peft
 bitsandbytes
-trl
 datasets
 sentence-transformers
+numpy
 beautifulsoup4
 lxml
 requests
+gradio

@@ -1,21 +1,16 @@
 """
-Phase 1: scrape actual ASA ruling case pages (not just the CAP/BCAP Code rule book
-from phase 0), filtered by topic, so we get real complaint/decision text per
-vertical group.
+Scrapes real ASA ruling case pages, filtered by topic, to get complaint/decision
+text for a chosen vertical group.
 
-Site mechanics (reverse-engineered by hand, verified with curl -- there is no
-public API):
-  - Each ASA "Topic" (e.g. "Cosmetic surgery and procedures") has a GUID used to
-    filter the rulings search: rulings.html?topic=<GUID>
-  - The search additionally needs an explicit date range
-    (custom_date=1&from_date=DD/MM/YYYY&to_date=DD/MM/YYYY) -- without it the
-    default window returns almost nothing.
-  - Results paginate with a plain &page=N query param (confirmed working
-    despite the "Show more" button looking JS-driven).
+Site mechanics (no public API):
+  - Each ASA "Topic" has a GUID used to filter the rulings search: rulings.html?topic=<GUID>
+  - The search needs an explicit date range (custom_date=1&from_date=DD/MM/YYYY&to_date=DD/MM/YYYY);
+    without it the default window returns almost nothing.
+  - Results paginate with a plain &page=N query param.
   - Individual ruling pages are static server-rendered HTML with consistent
     <h2>Background/Ad description/Issue/Response/Assessment/Action</h2> blocks,
-    a dedicated "CAP Code (Edition N)" section listing the exact rule numbers
-    breached (as links), and a title-section with decision/media/date.
+    a "CAP Code (Edition N)" section listing the exact rule numbers breached
+    (as links), and a title-section with decision/media/date.
 
 Usage:
     python scrape_asa_rulings.py group_b   # medical / cosmetic
@@ -33,9 +28,12 @@ import requests
 from bs4 import BeautifulSoup
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
+LISTING_URL = "https://www.asa.org.uk/codes-and-rulings/rulings.html"
 
 
 class PermanentHTTPError(Exception):
+    """A dead link (404 / redirected to ruling-not-found.html) -- not retried."""
     pass
 
 
@@ -43,8 +41,6 @@ def get_with_retry(url, params=None, retries=4, timeout=30):
     for attempt in range(retries):
         try:
             resp = requests.get(url, params=params, headers=HEADERS, timeout=timeout)
-            # ASA 404s land on /ruling-not-found.html with a 200 after redirect in some
-            # cases and a real 404 in others -- treat both as permanent, not transient.
             if resp.status_code == 404 or resp.url.endswith("/ruling-not-found.html"):
                 raise PermanentHTTPError(f"{url} -> not found ({resp.status_code})")
             resp.raise_for_status()
@@ -56,8 +52,7 @@ def get_with_retry(url, params=None, retries=4, timeout=30):
             print(f"  [retry {attempt + 1}/{retries}] {url} -> {e}; sleeping {wait}s", file=sys.stderr)
             time.sleep(wait)
     raise RuntimeError(f"Giving up on {url} after {retries} retries")
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
-LISTING_URL = "https://www.asa.org.uk/codes-and-rulings/rulings.html"
+
 
 # GUIDs extracted from each https://www.asa.org.uk/topic/<Name>.html page
 # (look for `topic=<GUID>` in the "View all articles" link on that page).
@@ -98,7 +93,7 @@ def list_ruling_urls(topic_guid, max_pages=50):
         page_links = set(re.findall(r'href="(https://www\.asa\.org\.uk/rulings/[^"]+)"', resp.text))
         before = len(urls)
         urls |= page_links
-        if len(urls) == before:  # no new links on this page -> we've reached the end
+        if len(urls) == before:  # no new links on this page -> reached the end
             break
         time.sleep(0.4)
     return urls
@@ -198,7 +193,7 @@ def scrape_group(group_name):
             record["matched_search_topics"] = sorted(matched_topics)
             record["group"] = group_name
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
-            f.flush()
+            f.flush()  # write incrementally -- one dead link should not lose already-scraped results
             written += 1
             if (i + 1) % 10 == 0:
                 print(f"  parsed {i + 1}/{len(all_urls)}")

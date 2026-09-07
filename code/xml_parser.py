@@ -1,6 +1,6 @@
 """
-Parse UK legislation.gov.uk CLML XML (data.xml) into per-section JSONL records
-suitable for RAG indexing / fine-tuning instruction-pair generation.
+Parses UK legislation.gov.uk CLML XML (data.xml) into per-section JSONL records
+for RAG indexing and fine-tuning dataset generation.
 
 Usage:
     python xml_parser.py downloaded_legal_xmls/ukpga_2026_1.xml ...
@@ -17,7 +17,7 @@ LEG_NS = "http://www.legislation.gov.uk/namespaces/legislation"
 UKM_NS = "http://www.legislation.gov.uk/namespaces/metadata"
 NS = {"leg": LEG_NS, "ukm": UKM_NS}
 
-# container tags we recurse through looking for headings / nested sections
+# Container tags recursed through when looking for headings / nested sections.
 CONTAINER_TAGS = {"Part", "Chapter", "Pblock", "P1group", "Schedules", "Schedule", "ScheduleBody"}
 
 
@@ -40,14 +40,14 @@ def build_commentary_index(root):
             index[key] = {"type": ctype, "text": text}
     return index
 
+
 def extract_metadata(root):
-    # dc:title lives in the shared <Metadata> block and covers both primary
-    # legislation (Acts, e.g. ukpga) and secondary legislation (Regulations/
-    # Statutory Instruments, e.g. uksi) -- their body structure (Part/P1group/P1)
-    # is identical, but Acts nest their title under leg:Primary/leg:PrimaryPrelims
-    # while Regulations nest it under leg:Secondary/leg:SecondaryPrelims, and the
-    # metadata block is ukm:PrimaryMetadata vs ukm:SecondaryMetadata respectively.
-    # dc:title sidesteps needing to know which one we're looking at.
+    # Primary legislation (Acts) and secondary legislation (Regulations/Statutory
+    # Instruments) share an identical body structure (Part/P1group/P1), but nest
+    # their title and metadata under different paths: leg:Primary/leg:PrimaryPrelims
+    # + ukm:PrimaryMetadata for Acts, leg:Secondary/leg:SecondaryPrelims +
+    # ukm:SecondaryMetadata for Regulations/SIs. dc:title is shared across both,
+    # so it's used for the title instead of picking a path.
     def first_match(*xpaths):
         for xp in xpaths:
             el = root.find(xp, namespaces=NS)
@@ -80,8 +80,8 @@ def extract_metadata(root):
 def section_own_text(p1_elem):
     """
     Collect this section's own body text, excluding text that lives inside a
-    BlockAmendment (that text is being inserted into a DIFFERENT act and is not
-    this section's own content -- naive .//Text collection double-counts it).
+    BlockAmendment (that text is being inserted into a different Act and is not
+    this section's own content).
     """
     parts = []
     for node in p1_elem.iter():
@@ -122,24 +122,23 @@ def walk_body(container, commentary_index, heading_stack, out, source_file):
                 "section_id": child.get("id"),
                 "section_number": pnum,
                 "heading_breadcrumb": [h for h in heading_stack if h],
-                # NOTE: RestrictStartDate/RestrictExtent never appear on P1 itself (verified empirically,
-                # 0/3712 sections across the corpus) -- they only live on ancestor containers and mean
-                # "this consolidated text is valid as of this date", NOT "this section came into force on
-                # this date". Real per-section commencement info is free text inside `commentary`
-                # (Type="I" entries, e.g. "S. 1 in force at 22.3.2026 by S.I. 2026/XXX") and needs its
-                # own regex/date parser if you want a structured in-force filter.
+                # RestrictStartDate/RestrictExtent never appear on P1 itself; they
+                # only live on ancestor containers and mean "this consolidated text
+                # is valid as of this date", not "this section came into force on
+                # this date". Real per-section commencement info is free text inside
+                # `commentary` (Type="I" entries).
                 "source_url": child.get("DocumentURI"),
                 "commentary": collect_commentary_refs(child, commentary_index),
                 "text": text,
             })
-            # a P1 can itself contain nested P1group (rare, e.g. schedule paragraphs) -- recurse into P1para
+            # a P1 can itself contain nested P1group (e.g. schedule paragraphs)
             if para is not None:
                 walk_body(para, commentary_index, heading_stack, out, source_file)
         elif tag in CONTAINER_TAGS:
             title = child.findtext("leg:Title", namespaces=NS)
             walk_body(child, commentary_index, heading_stack + [title], out, source_file)
         elif tag == "BlockAmendment":
-            continue  # quoted text belongs to a different act; never treated as this act's own section
+            continue  # quoted text belongs to a different act
         # ignore leaf metadata tags (Number, Title, Pnumber, P1para handled above, etc.)
 
 

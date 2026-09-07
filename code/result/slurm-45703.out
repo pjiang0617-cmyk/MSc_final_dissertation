@@ -1,0 +1,73 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loaded 980 real CAP/BCAP rule numbers, 531 ground-truth rulings
+Evaluating on 53 held-out test examples
+
+Loading retrieval index...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3867.58it/s]
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading base model (no adapter)...
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:   6%|▋         | 132/2076 [00:00<00:01, 1288.18it/s]Loading weights:  16%|█▌        | 330/2076 [00:00<00:01, 1670.42it/s]Loading weights:  26%|██▌       | 530/2076 [00:00<00:00, 1818.22it/s]Loading weights:  35%|███▌      | 731/2076 [00:00<00:00, 1888.30it/s]Loading weights:  44%|████▍     | 920/2076 [00:03<00:06, 170.73it/s] Loading weights:  50%|█████     | 1044/2076 [00:03<00:05, 185.55it/s]Loading weights:  55%|█████▍    | 1134/2076 [00:04<00:04, 192.41it/s]Loading weights:  58%|█████▊    | 1202/2076 [00:04<00:04, 201.19it/s]Loading weights:  61%|██████    | 1257/2076 [00:04<00:04, 202.19it/s]Loading weights:  63%|██████▎   | 1301/2076 [00:04<00:03, 204.64it/s]Loading weights:  64%|██████▍   | 1338/2076 [00:05<00:04, 163.76it/s]Loading weights:  66%|██████▌   | 1367/2076 [00:05<00:04, 171.99it/s]Loading weights:  67%|██████▋   | 1394/2076 [00:05<00:03, 177.43it/s]Loading weights:  68%|██████▊   | 1419/2076 [00:05<00:03, 186.78it/s]Loading weights:  81%|████████  | 1676/2076 [00:05<00:00, 581.32it/s]Loading weights:  93%|█████████▎| 1938/2076 [00:05<00:00, 970.24it/s]Loading weights: 100%|██████████| 2076/2076 [00:06<00:00, 344.89it/s]
+  [1/53] https://www.asa.org.uk/rulings/perrin-et-fils-sas-g26-1334485-perrin-et-fils-sas.html
+  [2/53] https://www.asa.org.uk/rulings/person-s--unknown-a24-1245836-person-s--unknown.html
+  [3/53] https://www.asa.org.uk/rulings/eme-aesthetics---beauty-academy-ltd-a25-1274782-eme-aesthetics---beauty-academy-ltd.html
+  [4/53] https://www.asa.org.uk/rulings/pharmica-ltd-a21-1112357-pharmica-ltd.html
+  [5/53] https://www.asa.org.uk/rulings/weybury-hildreth-ltd-a21-1123068-weybury-hildreth-ltd.html
+  [6/53] https://www.asa.org.uk/rulings/ersoy-health-services-tourism-ltd-a23-1199872-ersoy-health-services-tourism-ltd.html
+  [7/53] https://www.asa.org.uk/rulings/ovira-australia-a25-1281265-ovira-australia.html
+  [8/53] https://www.asa.org.uk/rulings/jumpman-gaming-ltd-a23-1226270-jumpman-gaming-ltd.html
+  [9/53] https://www.asa.org.uk/rulings/juniper-technologies-uk-ltd-a25-1314325-juniper-technologies-uk-ltd.html
+  [10/53] https://www.asa.org.uk/rulings/gmrd-apps-ltd-a23-1215012-gmrd-apps-ltd.html
+  [11/53] https://www.asa.org.uk/rulings/the-innovative-brewing-company-ltd-g24-1267427-the-innovative-brewing-company-ltd.html
+  [12/53] https://www.asa.org.uk/rulings/p-l-studio-a26-1327483-p-l-studio.html
+  [13/53] https://www.asa.org.uk/rulings/whg--international--ltd-a23-1189952-whg--international--ltd.html
+  [14/53] https://www.asa.org.uk/rulings/global-records-srl-a22-1172595-global-records-srl.html
+  [15/53] https://www.asa.org.uk/rulings/golden-tanning-salon-ltd-a23-1198240-golden-tanning-salon.html
+  [16/53] https://www.asa.org.uk/rulings/locksley-distilling-co-ltd.html
+  [17/53] https://www.asa.org.uk/rulings/john-adams-leisure-ltd-g21-1134156-john-adams-leisure-ltd.html
+  [18/53] https://www.asa.org.uk/rulings/3d-lipo-ltd-a21-1111994-3d-lipo-ltd.html
+  [19/53] https://www.asa.org.uk/rulings/ppb-counterparty-services-ltd-a22-1148714-ppb-counterparty-services-ltd.html
+  [20/53] https://www.asa.org.uk/rulings/marble-corporation-ltd-a23-1217662-marble-corporation-ltd.html
+  [21/53] https://www.asa.org.uk/rulings/william-hill-organization-ltd-a25-1286778-william-hill-organization-ltd.html
+  [22/53] https://www.asa.org.uk/rulings/bonne-terre-ltd-a23-1189938-bonne-terre-ltd-1.html
+  [23/53] https://www.asa.org.uk/rulings/the-angel-clinic-a22-1176082-the-angel-clinic.html
+  [24/53] https://www.asa.org.uk/rulings/juniper-technologies-uk-ltd-a25-1321384-juniper-technologies-uk-ltd.html
+  [25/53] https://www.asa.org.uk/rulings/serenity-rehabilitation-ltd-a22-1170052-serenity-rehabilitation-ltd.html
+  [26/53] https://www.asa.org.uk/rulings/whyte-and-mackay-ltd-g23-1196852-whyte-and-mackay-ltd.html
+  [27/53] https://www.asa.org.uk/rulings/golden-vape-uk-ltd-a25-1309216-golden-vape-uk-ltd.html
+  [28/53] https://www.asa.org.uk/rulings/dribble-media-ltd-a21-1123393-dribble-media-ltd.html
+  [29/53] https://www.asa.org.uk/rulings/happytiger-aps-a23-1218378-happytiger-aps.html
+  [30/53] https://www.asa.org.uk/rulings/infirst-ltd-a23-1217846-infirst-ltd.html
+  [31/53] https://www.asa.org.uk/rulings/au-vodka-ltd-a23-1199650-au-vodka-ltd.html
+  [32/53] https://www.asa.org.uk/rulings/asea-llc-a22-1177357-asea-global-llc.html
+  [33/53] https://www.asa.org.uk/rulings/brown-forman-beverages-europe-ltd-a23-1223370-brown-forman-beverages-europe-ltd.html
+  [34/53] https://www.asa.org.uk/rulings/victoria-anne-beauty-a22-1175447-victoria-anne-beauty.html
+  [35/53] https://www.asa.org.uk/rulings/lark-holdings-limited-a23-1221983-lark-holdings-limited.html
+  [36/53] https://www.asa.org.uk/rulings/juniper-technologies-uk-ltd-a25-1319597-juniper-technologies-uk-ltd.html
+  [37/53] https://www.asa.org.uk/rulings/ejec-ventures-llc-a24-1239910-ejec-ventures-llc.html
+  [38/53] https://www.asa.org.uk/rulings/aspro-atlantic-medikal-turizm-ticaret-limited-irketi.html
+  [39/53] https://www.asa.org.uk/rulings/back-to-normal-a21-1119949-back-to-normal.html
+  [40/53] https://www.asa.org.uk/rulings/shenzhen-guangming-district-kangshuo-e-commerce-firm-a23-1207922-shenzhen-guangming-district-kangshuo-e-commerce-firm.html
+  [41/53] https://www.asa.org.uk/rulings/bonne-terre-ltd-g22-1173207-bonne-terre-ltd.html
+  [42/53] https://www.asa.org.uk/rulings/dr-rani-ltd-a23-1198508-dr-rani-ltd.html
+  [43/53] https://www.asa.org.uk/rulings/acme-vape-ltd-1.html
+  [44/53] https://www.asa.org.uk/rulings/relx--uk--ltd-a23-1194613-relx--uk--ltd.html
+  [45/53] https://www.asa.org.uk/rulings/ian-macleod-distillers-ltd-a22-1158770-ian-macleod-distillers-ltd.html
+  [46/53] https://www.asa.org.uk/rulings/flavour-warehouse-ltd-g23-1196970-flavour-warehouse-ltd.html
+  [47/53] https://www.asa.org.uk/rulings/insulet-international-limited-a24-1273006-insulet-international-limited.html
+  [48/53] https://www.asa.org.uk/rulings/menwell-ltd-a25-1277445-menwell-ltd.html
+  [49/53] https://www.asa.org.uk/rulings/tecnologia-sostenible-y-responsable-sl--tsr--a23-1207275-tecnologia-sostenible-y-responsable-sl.html
+  [50/53] https://www.asa.org.uk/rulings/uab-bewell-eu-a22-1155932-uab-bewell-eu.html
+  [51/53] https://www.asa.org.uk/rulings/activision-blizzard-uk-ltd-g25-1319083-activision-blizzard-uk-ltd.html
+  [52/53] https://www.asa.org.uk/rulings/bomb-doll-aesthetics-a25-1274784-bomb-doll-aesthetics.html
+  [53/53] https://www.asa.org.uk/rulings/kane---ross-clinics-ltd-a22-1141110-kane--ross-clinics-ltd.html
+
+=== RAG-only (base model + retrieval, no fine-tuning) (n=53) ===
+  rule citation precision: 0.470
+  rule citation recall:    0.535
+  rule citation F1:        0.452
+  fabricated rule rate:    0.009
+  decision match rate:     0.000
+  format adherence rate:   0.000
+  decision match rate by true label (recall per class):
+    Not upheld: 0.000 (n=6)
+    Upheld: 0.000 (n=47)

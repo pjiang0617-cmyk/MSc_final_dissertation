@@ -1,15 +1,7 @@
 """
-Phase 0 (part 1): scrape the CAP Code (non-broadcast) and BCAP Code (broadcast)
-full rule text from asa.org.uk. These are the actual rules cited in every ASA
-ruling -- they are NOT on legislation.gov.uk, so this needs its own scraper.
-
-Page structure (verified against https://www.asa.org.uk/type/non_broadcast/code_section/03.html):
-  <h2>Background</h2>        -> free-text context for the section (sometimes cites backing legislation)
-  <h3>General</h3>            -> subgroup heading, rules are clustered under these
-  <div class="well mod-stacked">
-      <h4 class="well-heading mod-bordered">3.1</h4>   -> rule number
-      <p>rule text...</p>                              -> rule text (can be multiple <p>)
-  </div>
+Scrapes the CAP Code (non-broadcast) and BCAP Code (broadcast) full rule text
+from asa.org.uk. These are the rules cited in every ASA ruling; they are not
+on legislation.gov.uk, so this needs its own scraper.
 
 Usage:
     python scrape_cap_bcap_code.py
@@ -59,6 +51,7 @@ def get_section_titles(toc_url, url_prefix):
 
 
 def parse_section_page(html):
+    """Extract the Background text and each numbered rule from one section page."""
     soup = BeautifulSoup(html, "html.parser")
     main = soup.find(class_="main-content") or soup
 
@@ -66,9 +59,8 @@ def parse_section_page(html):
     rules = []
     current_subheading = None
 
-    # Walk main-content children in document order so rules stay attached
-    # to the nearest preceding <h2 class="font-color-grey">Background</h2>
-    # or <h3 class="font-color-grey"> subgroup heading.
+    # Walk main-content children in document order so rules stay attached to
+    # the nearest preceding Background heading or subgroup heading.
     mode = None
     for el in main.find_all(["h2", "h3", "div"], recursive=True):
         if el.name == "h2":

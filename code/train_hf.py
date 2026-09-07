@@ -1,39 +1,23 @@
 """
-GPU/CUDA training script -- the HF PEFT + bitsandbytes equivalent of the Mac's
-`mlx_lm.lora` command (that MLX version stays untouched in
-asa_legal_pipeline/code/ -- this is a separate, from-scratch implementation for
-NVIDIA hardware, not a port of it, since MLX doesn't run on CUDA at all).
+QLoRA fine-tuning script using Hugging Face transformers + peft + bitsandbytes.
 
-Uses plain transformers.Trainer + manual PEFT wrapping, NOT trl's SFTTrainer/
-SFTConfig -- that higher-level wrapper kept breaking across the trl version
-actually installed on the cluster (1.9.2): DataCollatorForCompletionOnlyLM was
-removed (replaced by an SFTConfig flag), SFTConfig.max_seq_length was renamed
-to max_length, and assistant_only_loss required chat-template "{% generation %}"
-markers this checkpoint's template doesn't have. Rather than keep chasing trl's
-API across versions, this drops down to the stable, rarely-churning
-transformers.Trainer API and does the same two things trl's abstractions were
-doing for us, explicitly:
-  1. PEFT-wrap the model ourselves (get_peft_model) instead of letting
-     SFTTrainer do it internally
-  2. mask the prompt (system+user) out of the loss ourselves, using the exact
-     same technique as the Mac's --mask-prompt / mlx_lm's ChatDataset.process:
-     tokenize messages[:-1] with add_generation_prompt=True to find where the
-     assistant's answer starts, then set every label token before that index
-     to -100 (ignored by the loss) -- see mask_labels() below
+Uses plain transformers.Trainer with manual PEFT wrapping, rather than trl's
+SFTTrainer, and does explicitly what that higher-level wrapper would otherwise
+do internally:
+  1. PEFT-wrap the model (get_peft_model) before handing it to Trainer
+  2. mask the prompt (system+user) out of the loss: tokenize messages[:-1] with
+     add_generation_prompt=True to find where the assistant's answer starts,
+     then set every label token before that index to -100 (ignored by the
+     loss) -- see tokenize_and_mask() below
 
-Mirrors the same design decisions as the MLX run otherwise:
-  - QLoRA (4-bit quantization via bitsandbytes) so it fits on a single GPU,
-    matching the project plan's stated approach ("Hugging Face PEFT library
-    implementing LoRA for efficient parameter updates on a single consumer-grade GPU")
-  - same LoRA rank/alpha/target-module choices as a reasonable default for a
-    Gemma-family model; adjust --lora-r / --lora-alpha if the first run under-fits
-  - target_modules is a regex scoped to model.language_model.* only -- this
+Key design points:
+  - QLoRA (4-bit quantization via bitsandbytes) so the model fits on a single GPU
+  - target_modules is a regex scoped to model.language_model.* only -- the base
     checkpoint is multimodal (text+vision+audio), and bare-name matching (e.g.
-    "q_proj") also matches same-named layers inside the vision/audio towers,
-    which use a custom Gemma4ClippableLinear wrapper PEFT can't inject a LoRA
-    adapter into (confirmed on the real cluster). We only want the text path
-    anyway -- fine-tuning here is about teaching citation *behaviour*, not
-    vision/audio capability (see build_finetune_dataset.py's docstring).
+    "q_proj") would also match same-named layers inside the vision/audio
+    towers, which use a custom linear layer implementation peft cannot inject
+    a LoRA adapter into. Only the text path is trained anyway, since
+    fine-tuning here is about citation *behaviour*, not vision/audio capability.
 
 Usage:
     python train_hf.py --output-dir ../adapters/legal_lora_v1_gpu
@@ -69,11 +53,9 @@ def build_model_and_tokenizer(load_in_4bit=True):
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
         quantization_config=quant_config,
-        # device_map="auto" lets accelerate decide per-layer placement, and on this
-        # cluster it was deciding to offload some layers to CPU/disk -- which 4-bit
-        # bitsandbytes models don't support without an extra opt-in flag, so it just
-        # errors out. We're always requesting a single GPU (-G1) via Slurm anyway, so
-        # skip the auto-placement guesswork and force everything onto that one GPU.
+        # device_map={"": 0}, not "auto": a single GPU is always requested via Slurm
+        # anyway, and 4-bit bitsandbytes models reject accelerate's automatic
+        # CPU/disk offload without an extra opt-in flag.
         device_map={"": 0},
         torch_dtype=torch.bfloat16,
     )
@@ -124,10 +106,8 @@ def main():
     ap.add_argument("--lora-r", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
-    # Started at 2, assuming a real GPU would comfortably beat the Mac's forced
-    # batch-size=1 -- but the "cs" partition's cards only have ~15.6GB VRAM, and
-    # without gradient checkpointing (now fixed above) even batch-size=2 OOM'd.
-    # Back to 1 as the safe default; --grad-accum makes up the effective batch size.
+    # batch-size=1 is the limit on ~15.6GB cards; --grad-accum makes up the
+    # effective batch size instead.
     ap.add_argument("--batch-size", type=int, default=1)
     ap.add_argument("--grad-accum", type=int, default=8)
     ap.add_argument("--learning-rate", type=float, default=1e-4)
@@ -142,14 +122,12 @@ def main():
     print("Loading model in 4-bit (QLoRA)...")
     model, tokenizer = build_model_and_tokenizer(load_in_4bit=True)
 
-    # Manual replacement for peft's prepare_model_for_kbit_training. That helper
-    # upcasts EVERY non-4bit param in the whole model to fp32 for numerical
-    # stability -- fine for a text-only model, but this checkpoint is multimodal,
-    # and its (unquantized, much larger than the text decoder) vision/audio towers
-    # got upcast right along with it, which alone tried to allocate 10.5GB and
-    # OOM'd on this 15.6GB GPU. We only ever train/use model.language_model, so
-    # scope the fp32 upcast (and just do the rest of what the helper does --
-    # freeze everything, enable gradient checkpointing + input-grad hook) to that.
+    # Manual replacement for peft's prepare_model_for_kbit_training(): that helper
+    # upcasts every non-4bit param in the whole model to fp32, which for this
+    # multimodal checkpoint includes the much larger, unquantized vision/audio
+    # towers and OOMs on a 15.6GB GPU. Only model.language_model is trained, so
+    # the fp32 upcast is scoped to that; the rest (freeze everything, enable
+    # gradient checkpointing + input-grad hook) mirrors what the helper does.
     for name, param in model.named_parameters():
         param.requires_grad = False
         if param.ndim == 1 and "language_model" in name:

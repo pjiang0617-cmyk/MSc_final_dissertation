@@ -1,13 +1,5 @@
-"""
-GPU/CUDA variant of asa_legal_pipeline/code/evaluate_finetune.py -- identical
-metrics and scoring logic (score_answer, load_valid_rule_numbers, load_ground_truth_by_url
-are unchanged, pure Python), only the model-loading/generation half is swapped from
-mlx_lm to transformers+peft.
-
-Usage:
-    python evaluate_finetune_hf.py --adapter-path ../adapters/legal_lora_v1_gpu
-    python evaluate_finetune_hf.py --adapter-path ../adapters/legal_lora_v1_gpu --limit 10
-"""
+# base model vs. fine-tuned (no retrieval) on the held-out test set.
+# python evaluate_finetune_hf.py --adapter-path ../adapters/legal_lora_v1_gpu [--limit N]
 
 import argparse
 import json
@@ -24,16 +16,19 @@ RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 FINETUNE_DIR = Path(__file__).resolve().parent.parent / "data" / "finetune"
 MODEL_ID = "google/gemma-4-E4B-it"
 
-RULE_PATTERN = re.compile(r"\b\d{1,2}\.\d{1,3}(?:\.\d{1,3})?\b")
+# CAP and BCAP number their sections independently (e.g. CAP rule 13.10 and BCAP
+# rule 13.10 are different, unrelated rules), so every cited rule is tracked as a
+# (code, number) pair rather than a bare number everywhere below.
+CODE_OR_RULE_PATTERN = re.compile(r"\b(CAP|BCAP)\b|\b\d{1,2}\.\d{1,3}(?:\.\d{1,3})?\b", re.I)
 
 
 def load_valid_rule_numbers():
     valid = set()
-    for fname in ("cap_code_sections.json", "bcap_code_sections.json"):
+    for code, fname in (("CAP", "cap_code_sections.json"), ("BCAP", "bcap_code_sections.json")):
         sections = json.loads((RAW_DIR / fname).read_text(encoding="utf-8"))
         for sec in sections:
             for rule in sec["rules"]:
-                valid.add(rule["rule_number"])
+                valid.add((code, rule["rule_number"]))
     return valid
 
 
@@ -43,9 +38,11 @@ def load_ground_truth_by_url():
         with open(RAW_DIR / fname, encoding="utf-8") as f:
             for line in f:
                 rec = json.loads(line)
+                # A single ruling only ever applies one Code, so every rule it cites shares that Code.
+                code = "BCAP" if "BCAP" in (rec.get("code_edition") or "").upper() else "CAP"
                 gt[rec["source_url"]] = {
                     "decision": rec.get("decision"),
-                    "cited_rules": set(rec.get("cited_rules") or []),
+                    "cited_rules": {(code, r) for r in (rec.get("cited_rules") or [])},
                 }
     return gt
 
@@ -58,7 +55,18 @@ def extract_decision(text):
 def extract_cited_rules(text):
     m = re.search(r"Rules cited:(.*)", text, re.I | re.S)
     scope = m.group(1) if m else text
-    return set(RULE_PATTERN.findall(scope))
+    # Scan left to right, tagging each rule number with the most recently seen
+    # "CAP"/"BCAP" token -- handles a line citing rules from both Codes at once
+    # (e.g. "CAP Code ... rule 13.10, BCAP Code ... rule 12.9").
+    cited = set()
+    current_code = "CAP"
+    for match in CODE_OR_RULE_PATTERN.finditer(scope):
+        token = match.group(0).upper()
+        if token in ("CAP", "BCAP"):
+            current_code = token
+        else:
+            cited.add((current_code, match.group(0)))
+    return cited
 
 
 def score_answer(generated_text, ground_truth, valid_rules):
@@ -76,7 +84,8 @@ def score_answer(generated_text, ground_truth, valid_rules):
     fabricated_rate = len(fabricated) / len(pred_rules) if pred_rules else 0.0
 
     pred_decision = extract_decision(generated_text)
-    decision_match = (pred_decision is not None) and (pred_decision.lower() == (ground_truth["decision"] or "").lower())
+    true_decision = ground_truth["decision"] or "Upheld"
+    decision_match = (pred_decision is not None) and (pred_decision.lower() == true_decision.lower())
 
     format_ok = bool(re.search(r"Decision:", generated_text, re.I)) and bool(re.search(r"Rules cited:", generated_text, re.I))
 
@@ -84,14 +93,15 @@ def score_answer(generated_text, ground_truth, valid_rules):
         "precision": precision, "recall": recall, "f1": f1,
         "fabricated_rate": fabricated_rate, "fabricated_rules": sorted(fabricated),
         "decision_match": decision_match, "format_ok": format_ok,
+        "pred_decision": pred_decision, "true_decision": true_decision,
     }
 
 
 def load_model(adapter_path=None):
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     quant_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16)
-    # device_map={"": 0} not "auto" -- see train_hf.py's comment: "auto" was offloading
-    # layers to CPU on this cluster, which 4-bit bitsandbytes models reject outright.
+    # device_map={"": 0}, not "auto": avoids accelerate's automatic CPU/disk offload,
+    # which 4-bit bitsandbytes models reject.
     model = AutoModelForCausalLM.from_pretrained(MODEL_ID, quantization_config=quant_config, device_map={"": 0}, torch_dtype=torch.bfloat16)
     if adapter_path:
         model = PeftModel.from_pretrained(model, adapter_path)
@@ -118,6 +128,15 @@ def summarize(name, results):
     print(f"  fabricated rule rate:    {avg('fabricated_rate'):.3f}")
     print(f"  decision match rate:     {avg('decision_match'):.3f}")
     print(f"  format adherence rate:   {avg('format_ok'):.3f}")
+
+    # Per-class recall, so a high decision match rate can be told apart from
+    # the model just always predicting the majority class ("Upheld").
+    true_labels = sorted({r["true_decision"] for r in results})
+    print("  decision match rate by true label (recall per class):")
+    for label in true_labels:
+        subset = [r for r in results if r["true_decision"] == label]
+        label_recall = sum(r["decision_match"] for r in subset) / len(subset) if subset else 0.0
+        print(f"    {label}: {label_recall:.3f} (n={len(subset)})")
 
 
 def evaluate_model(model, tokenizer, test_examples, ground_truth, valid_rules, max_tokens):
@@ -149,17 +168,15 @@ def main():
         test_examples = test_examples[:args.limit]
     print(f"Evaluating on {len(test_examples)} held-out test examples\n")
 
-    # Loading both models concurrently OOMs on a 15.6GB card (base model alone uses
-    # ~9GB) -- evaluate and fully release one model before loading the other.
+    # Base and fine-tuned models are evaluated one at a time, fully releasing each
+    # before loading the next (loading both at once OOMs a 15.6GB card), and results
+    # are printed as soon as each pass finishes so they survive a job timeout.
     print("Loading base model...")
     base_model, base_tok = load_model(adapter_path=None)
     print("Evaluating base model...")
     base_results = evaluate_model(base_model, base_tok, test_examples, ground_truth, valid_rules, args.max_tokens)
     del base_model, base_tok
     torch.cuda.empty_cache()
-    # Printed immediately (not held until the fine-tuned pass also finishes) so these
-    # numbers survive even if the job is killed (e.g. hits its --time limit) partway
-    # through the fine-tuned model's pass below.
     summarize("Baseline (no fine-tuning)", base_results)
 
     print("Loading fine-tuned model (adapter applied)...")

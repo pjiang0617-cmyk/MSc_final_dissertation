@@ -1,20 +1,5 @@
-"""
-RAG pipeline (Approach 2 -- hand-rolled): stage 2 of 3.
-
-Embeds every chunk from chunks.jsonl with a small local sentence-transformers
-model and saves the vectors alongside the chunk order, so retrieve.py can do
-a brute-force cosine-similarity search (fine at this scale: ~2.5k chunks,
-no need for a dedicated vector database or ANN index).
-
-Model choice: BAAI/bge-small-en-v1.5 -- small (~130MB), CPU/Metal-friendly,
-good retrieval quality for its size, widely used for exactly this kind of
-small-corpus semantic search.
-
-Usage:
-    python build_embeddings.py
-Writes:
-    ../data/rag/chunk_embeddings.npy
-"""
+# Embeds chunks.jsonl with BAAI/bge-small-en-v1.5, saves chunk_embeddings.npy
+# in the same row order as chunks.jsonl.
 
 import json
 from pathlib import Path
