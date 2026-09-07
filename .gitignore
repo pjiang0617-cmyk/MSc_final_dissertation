@@ -10,8 +10,10 @@ data/raw/*.xml
 __pycache__/
 *.pyc
 
-# Trained LoRA adapters. The final adapter_model.safetensors for each run is
-# 133MB, over GitHub's 100MB per-file limit, and the per-checkpoint copies of
-# optimizer state come to about 8GB in total. Both adapters are archived
-# outside this repository -- see README.md for where to get them.
-adapters/
+# Trained LoRA adapters. Only the bfloat16 copies of the two final adapters are
+# version-controlled (67MB each). Excluded: the float32 originals, at 133MB each
+# over GitHub's 100MB per-file limit, and the per-checkpoint optimizer state,
+# about 8GB in total. See "Adapters" in README.md.
+adapters/*
+!adapters/legal_lora_v1_gpu_bf16/
+!adapters/legal_lora_v2_gpu_bf16/
